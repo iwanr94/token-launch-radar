@@ -1,4 +1,4 @@
-// A working token-radar-01 entry (Node 22, standard library only), model radar-2.
+// A working token-radar-01 entry (Node 22, standard library only), model radar-3.
 //
 // The program reads the sealed snapshot from /input/snapshot.json (or --input <file|dir>), scores
 // every pre-token protocol with the model in lib/model.ts, writes the ranked board to
@@ -7,9 +7,9 @@
 //
 // The dashboard is a static page, no framework and no network: dashboard/index.html, dashboard/app.css
 // and dashboard/app.js read /output/data.js, which this program writes from the same board. The model
-// is radar-2: the base multiple is the market's own multiple for the protocol's category, read out of
-// the snapshot's live-token protocols, so a lending protocol and a bridge are not priced the same.
-// Change the model, the page or the plan; keep the gate's shape.
+// is radar-3: the multiple is read off a log-log size curve fitted to the snapshot's own traded
+// protocols, checked out of sample against the flat median radar-2 used, and every row is costed to
+// a Farm / Thin / Skip verdict, so the page says what to do, not only what is big.
 //
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts --input ../input/snapshot.json

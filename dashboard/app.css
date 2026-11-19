@@ -38,4 +38,25 @@ ol.steps li{margin:8px 0}
 .sandbox output{color:var(--ink);font-variant-numeric:tabular-nums}
 button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
 button:hover{border-color:var(--acc)}
+/* radar-3 additions: new elements only, on the same tokens and the same scale. */
+.oosline{font-size:13px;margin-top:4px}
+.dim{color:var(--mut);font-weight:400;font-size:14px}
+td .slug{color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;line-height:1.6;white-space:nowrap}
+.v-farm{color:var(--up);border-color:var(--up)}
+.v-thin{color:var(--gold);border-color:var(--gold)}
+.v-skip{color:var(--down);border-color:var(--down)}
+.detail h3{font-size:16px;margin:18px 0 8px}
+.verdictbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0 4px;background:var(--bg)}
+.verdictbox h3{margin:0 0 10px}
+.vmath{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.vmath div{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
+.vmath b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.vmath span{color:var(--mut);font-size:12px;display:block;margin-top:2px}
+.planhead{border-top:1px solid var(--line);padding-top:14px}
+code{font:inherit;color:var(--acc)}
+#mults,#curve{margin:10px 0 4px}
+#sens tbody tr{cursor:default}
+#sens tbody tr:first-child{background:#1c2b40}
+#live tbody tr{cursor:default}
 @media (max-width:760px){.controls{padding:8px 12px}.top,main{padding-left:12px;padding-right:12px}th:nth-child(4),td:nth-child(4),th:nth-child(7),td:nth-child(7){display:none}}

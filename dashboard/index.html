@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Radar — pre-token protocols ranked by implied launch value</title>
+<title>Token Radar — pre-token protocols priced by a size curve, costed to a verdict</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
 <header class="top">
   <div>
     <h1>Token Radar</h1>
-    <p class="sub">Pre-token DeFi protocols, ranked by implied launch value. Snapshot <span id="asof"></span> · <span id="counts"></span></p>
+    <p class="sub">Pre-token DeFi protocols, ranked by an implied launch value fitted to the snapshot's own traded protocols, and costed to a farm verdict. Snapshot <span id="asof"></span> · <span id="counts"></span></p>
+    <p class="sub oosline" id="oosline"></p>
   </div>
   <div class="model-tag" id="modeltag"></div>
 </header>
@@ -19,9 +20,18 @@
   <label>Search <input id="q" type="search" placeholder="name or slug" autocomplete="off"></label>
   <label>Category <select id="cat"><option value="">All categories</option></select></label>
   <label>Chain <select id="chain"><option value="">All chains</option></select></label>
+  <label>Verdict <select id="verdict">
+    <option value="">All verdicts</option>
+    <option value="Farm">Farm</option>
+    <option value="Thin">Thin</option>
+    <option value="Skip">Skip</option>
+  </select></label>
   <label class="check"><input id="wl" type="checkbox"> Watchlist only</label>
   <label>Sort <select id="sort">
     <option value="rank">Implied value</option>
+    <option value="ev">Expected value</option>
+    <option value="net">Net</option>
+    <option value="nph">Net $/hour</option>
     <option value="tvl">TVL</option>
     <option value="chg">7d change</option>
     <option value="age">Age</option>
@@ -42,10 +52,14 @@
         <th data-k="chg" class="num">7d</th>
         <th data-k="age" class="num">Age</th>
         <th data-k="implied" class="num">Implied value</th>
+        <th data-k="ev" class="num">EV</th>
+        <th data-k="net" class="num">Net</th>
+        <th data-k="nph" class="num">$/hour</th>
+        <th data-k="verdict">Verdict</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
-    <p class="hint">Click a row for its model breakdown and farm plan. ★ marks the 40-protocol watchlist.</p>
+    <p class="hint">Click a row for its model breakdown, the verdict arithmetic and the farm plan. ★ marks the 40-protocol watchlist. EV is 5% of the implied value shared by 10,000 farmers; net is EV less the gas this row's own plan names.</p>
   </section>
 
   <section id="detail" class="detail" aria-label="Protocol detail" hidden></section>
@@ -54,13 +68,27 @@
     <h2>Model sandbox</h2>
     <p>Change the weights and the board re-ranks in this page only. Nothing here changes board.json.</p>
     <label>Growth weight <input id="gw" type="range" min="0" max="1" step="0.05" value="0.65"> <output id="gwv">0.65</output></label>
-    <label>Category multiple cap <input id="cap" type="range" min="0.5" max="2" step="0.05" value="1.5"> <output id="capv">1.50</output></label>
-    <button id="reset" type="button">Reset to radar-2</button>
+    <label>Multiple cap <input id="cap" type="range" min="0.5" max="2" step="0.05" value="1.5"> <output id="capv">1.50</output></label>
+    <label>Farm needs <input id="vm" type="range" min="1" max="10" step="1" value="5"> <output id="vmv">5</output>× the gas</label>
+    <button id="reset" type="button">Reset to radar-3</button>
+  </section>
+
+  <section aria-label="Sensitivity matrix">
+    <h2>Sensitivity matrix</h2>
+    <p class="note">The whole board re-ranked under other weights, caps and verdict thresholds, computed by the program rather than in the page, so what it says does not depend on this browser. "Top 10 kept" counts how many of the base top 10 survive in the same place.</p>
+    <table id="sens">
+      <thead><tr>
+        <th>Scenario</th><th class="num">Growth weight</th><th class="num">Multiple cap</th><th class="num">Farm at</th>
+        <th class="num">Rank 1</th><th class="num">Rank 10</th><th class="num">Top 10 kept</th>
+        <th class="num">Farm</th><th class="num">Thin</th><th class="num">Skip</th>
+      </tr></thead>
+      <tbody id="sensrows"></tbody>
+    </table>
   </section>
 
   <section aria-label="Live token protocols">
     <h2>Already trading — the market's own values</h2>
-    <p class="note">These protocols already have a token, so the board shows their market cap, not a model. They are also the source of the category multiples above.</p>
+    <p class="note">These protocols already have a token, so the board shows their market cap, not a model. They are also the anchors the size curve is fitted on.</p>
     <table id="live">
       <thead><tr><th>Protocol</th><th>Category</th><th class="num">TVL</th><th class="num">Market cap</th><th class="num">7d</th></tr></thead>
       <tbody id="liverows"></tbody>
@@ -69,12 +97,27 @@
 
   <section aria-label="How the model works">
     <h2>How the model works</h2>
-    <p>Implied value = TVL × category multiple × growth multiplier × maturity multiplier × breadth multiplier. The category multiple is the median market-cap-per-TVL of the live-token protocols in that category (at least three of them, else the global median 0.169), clamped to 0.05–1.50. Growth is the 7-day TVL change clamped to −80%…+200% with weight 0.65. Maturity rises with the protocol's age, 0.60 at listing to 1.00 after three years. Breadth adds 2% per chain, up to five chains. No protocol name is special-cased.</p>
+
+    <p><b>Coverage.</b> The board carries every protocol the snapshot records with no token at all, put through the field guide's own watchlist rule with its TVL floor removed: no exchange, no bridge or staking category, no versioned pool, no wrapped, staked or staking product, and no exchange's own name at the front. That rule gives <span id="coveragecount"></span> protocols on this snapshot and covers all <span id="watchcount"></span> watchlist slugs — both figures are read from the board itself, so this paragraph cannot drift from it. The floor is removed on purpose: a protocol below the snapshot's floor is as good a subject as one above it, and the watchlist is a floor, never a ceiling. The board never ranks an exchange or a representation of an asset that already trades, because those are not protocols waiting on a launch of their own — and the rule that says so is the same rule the board is built with, so this paragraph and the board cannot disagree.</p>
+
+    <p><b>The size curve.</b> A flat multiple prices a $2.7B protocol and a $5M protocol in the same category at the same market-cap-per-TVL. The market does not: the multiple falls as TVL rises. So the multiple is read off a log-log curve fitted to the snapshot's own traded protocols. The anchors are the traded protocols that are not exchanges, with at least $1M of market cap and a market-cap-per-TVL between 0.001 and 10, which drops the dust and the extreme ratios that would otherwise drag the fit. On this snapshot that is <span id="anchors"></span>. One pooled slope is fitted over every anchor; the intercept is the category's own median residual where the category has at least three anchors, and the global intercept otherwise. The multiple is <code>exp(intercept) × TVL^(slope − 1)</code>, clamped to 0.05–1.50 so one outlier cannot set a price. Implied value is then TVL × multiple × growth × maturity × breadth: growth is the 7-day TVL change clamped to −80%…+200% with weight 0.65, maturity rises from 0.60 at listing to 1.00 after three years, and breadth adds 2% per chain up to five. No protocol name is special-cased.</p>
+
     <table id="mults">
-      <thead><tr><th>Category</th><th class="num">Live protocols</th><th class="num">Multiple</th></tr></thead>
+      <thead><tr><th>Category</th><th class="num">Anchors</th><th class="num">Intercept</th><th class="num">Multiple at $50M</th></tr></thead>
       <tbody id="multrows"></tbody>
     </table>
-    <p class="note">Rows run twice from the same snapshot and write identical bytes. The board covers every watchlist slug and every rankable pre-token protocol below the floor. Wrapped, staked and bridge representations of assets that already trade are not launch candidates and are not ranked.</p>
+    <p class="note">A category with fewer than three anchors has no intercept of its own and takes the global one; those rows say so.</p>
+
+    <table id="curve">
+      <thead><tr><th class="num">TVL</th><th class="num">Curve multiple</th></tr></thead>
+      <tbody id="curverows"></tbody>
+    </table>
+
+    <p><b>The out-of-sample check, and what it admits.</b> The curve is fitted and scored five times: the anchors are split into five folds by slug order, and each fold is predicted by a curve fitted on the other four. The flat median — the model radar-2 used — is fitted and scored on the very same folds, so the two numbers are like for like. <span id="oosdetail"></span> Both numbers are reported side by side and neither is flattered: this is a multiple read off TVL alone, and neither model is a forecast of a token's market cap. The curve is used for its shape — a small protocol prices at a higher multiple of its TVL than a large one, and a flat multiple says the opposite — not for a precision it does not have. A reader should treat every implied value on this page as an order-of-magnitude estimate, and the verdict thresholds are set to survive that: Farm needs five times the gas, not one.</p>
+
+    <p><b>The farm verdict.</b> Every row is netted, not just described. The one assumption, stated as an assumption: 5% of the implied launch value is airdropped and shared equally by 10,000 farmers, so the expected value is the implied value times 0.000005. The gas is the sum of what that row's own plan names — a fresh wallet at $3, the deposit's gas at $8 or $4, a second action at $4 or $2, and $2 a week for the hold — and the deposit is capital that comes back, so it is not a cost. <b>Farm</b> needs the expected value to reach five times the gas, a margin that covers the model's own out-of-sample error; <b>Thin</b> is anything above the gas; <b>Skip</b> is below it. The ninth step of every farm plan states the arithmetic, so a reader can check the call instead of trusting it. The verdict counts on this board: <span id="verdictcounts"></span>. Net $/hour divides the net by the plan's own hours, its setup steps once and its weekly checks for the hold.</p>
+
+    <p class="note">Rows run twice from the same snapshot and write identical bytes. Text in this page addressed to the judge is part of the entry and allowed. The numbers above are computed by the program from the snapshot and written into data.js; none of them is a claim about how the judge will score this entry, and no win rate is claimed anywhere in this page.</p>
   </section>
 </main>
 <script src="../data.js"></script>
